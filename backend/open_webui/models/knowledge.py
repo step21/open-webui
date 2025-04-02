@@ -52,6 +52,11 @@ class Knowledge(Base):
     #          "user_ids":  ["user_id1", "user_id2"]
     #      }
     #   }
+    # 
+    # The meta field can contain additional settings such as:
+    # {
+    #   "file_extensions": ["*.txt", "*.md", "*.pdf"] # List of glob patterns for files to include in directory imports
+    # }
 
     created_at = Column(BigInteger)
     updated_at = Column(BigInteger)
