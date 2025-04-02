@@ -7,12 +7,14 @@
 	import { toast } from 'svelte-sonner';
 	import { knowledge } from '$lib/stores';
 	import AccessControl from '../common/AccessControl.svelte';
+	import FileExtensionsSelector from './FileExtensionsSelector.svelte';
 
 	let loading = false;
 
 	let name = '';
 	let description = '';
 	let accessControl = null;
+	let meta = { file_extensions: [] };
 
 	const submitHandler = async () => {
 		loading = true;
@@ -29,7 +31,8 @@
 			localStorage.token,
 			name,
 			description,
-			accessControl
+			accessControl,
+			meta
 		).catch((e) => {
 			toast.error(`${e}`);
 		});
@@ -115,6 +118,17 @@
 				<AccessControl bind:accessControl accessRoles={['read', 'write']} />
 			</div>
 		</div>
+
+		<div class="mt-2">
+			<div class="px-3 py-2 bg-gray-50 dark:bg-gray-950 rounded-lg">
+			  <FileExtensionsSelector
+				knowledge={{ meta }}
+				onChange={() => {
+					changeDebounceHandler();
+				}}
+			  />
+			</div>
+		  </div>
 
 		<div class="flex justify-end mt-2">
 			<div>

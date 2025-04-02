@@ -32,6 +32,7 @@
 
 	import AddContentMenu from './KnowledgeBase/AddContentMenu.svelte';
 	import AddTextContentModal from './KnowledgeBase/AddTextContentModal.svelte';
+	import { matchesAllowedExtension } from './FileExtensionFilter.js';
 
 	import SyncConfirmDialog from '../../common/ConfirmDialog.svelte';
 	import RichTextInput from '$lib/components/common/RichTextInput.svelte';
@@ -112,6 +113,15 @@
 
 	const uploadFileHandler = async (file) => {
 		console.log(file);
+		
+		// Check if file matches allowed extensions
+		if (!matchesAllowedExtension(file.name, knowledge?.meta?.file_extensions)) {
+			toast.error($i18n.t('File type not allowed. Allowed extensions: {0}',
+			[knowledge.meta?.file_extensions?.join(', ') || $i18n.t('All files')])
+			
+			);
+		return;
+		}
 
 		const tempItemId = uuidv4();
 		const fileItem = {
@@ -214,7 +224,19 @@
 				if (entry.name.startsWith('.')) continue;
 
 				if (entry.kind === 'file') {
-					totalFiles++;
+					const file = await entry.getFile();
+  					const fileWithPath = new File([file], entryPath, { type: file.type });
+					// Add file extension check before uploading
+  					if (matchesAllowedExtension(entry.name, knowledge?.meta?.file_extensions)) {
+    					await uploadFileHandler(fileWithPath);
+						totalFiles++;
+						} else {
+							toast.error($i18n.t('File type not allowed. Allowed extensions: {0}',
+							[knowledge.meta?.file_extensions?.join(', ') || $i18n.t('All files')])
+			
+			);
+						}
+					
 				} else if (entry.kind === 'directory') {
 					// Only process non-hidden directories
 					if (!entry.name.startsWith('.')) {
@@ -279,7 +301,16 @@
 				try {
 					const files = Array.from(input.files)
 						// Filter out files from hidden folders
-						.filter((file) => !hasHiddenFolder(file.webkitRelativePath));
+						.filter((file) => !hasHiddenFolder(file.webkitRelativePath))
+						// Filter files based on allowed extensions
+  						.filter((file) => {
+							const isAllowed = matchesAllowedExtension(file.name, knowledge?.meta?.file_extensions);
+							if (!isAllowed) {
+								const allowedTypes = knowledge?.meta?.file_extensions?.join(', ') || $i18n.t('All files');
+								toast.error($i18n.t('File {0} not allowed. Allowed types: {1}', [file.name, allowedTypes]));
+							}
+							return isAllowed;
+						});
 
 					let totalFiles = files.length;
 					let uploadedFiles = 0;
@@ -473,7 +504,15 @@
 
 				if (inputFiles && inputFiles.length > 0) {
 					for (const file of inputFiles) {
-						await uploadFileHandler(file);
+						// Add extension filtering
+  						if (matchesAllowedExtension(file.name, knowledge?.meta?.file_extensions)) {
+    						await uploadFileHandler(file);
+  							} else {
+								toast.error($i18n.t('File type not allowed. Allowed extensions: {0}',
+								[knowledge.meta?.file_extensions?.join(', ') || $i18n.t('All files')])
+
+			);
+							}
 					}
 				} else {
 					toast.error($i18n.t(`File not found.`));
@@ -596,10 +635,18 @@
 	hidden
 	on:change={async () => {
 		if (inputFiles && inputFiles.length > 0) {
+			// Add extension filtering
+			// FIXME: if that works here, do we need it in each uploadHandler?
 			for (const file of inputFiles) {
-				await uploadFileHandler(file);
+			if (matchesAllowedExtension(file.name, knowledge?.meta?.file_extensions)) {
+     			await uploadFileHandler(file);
+				console.log("Uploaded {file}", file);
+    			} else {
+					const allowedTypes = knowledge?.meta?.file_extensions?.join(', ') || $i18n.t('All files');
+                    toast.error($i18n.t('File "{0}" not allowed. Allowed types: {1}', [file.name, allowedTypes]));			
+					console.log("File not allowed {}", file);
+				}
 			}
-
 			inputFiles = null;
 			const fileInputElement = document.getElementById('files-input');
 
